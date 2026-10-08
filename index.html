@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Southern Road Trip</title>
+<style>
+:root{
+  --bg:#fdf8f0; --panel:#ffffff; --ink:#1f2330; --muted:#5d6472;
+  --line:#e3dcd0; --accent:#1d7a5f; --accent-ink:#ffffff;
+  --warm:#e8872b; --bad:#c0392b; --good:#1d7a5f;
+  --chip:#f3ece0; --shadow:0 2px 0 rgba(0,0,0,.06), 0 8px 24px rgba(31,35,48,.07);
+  --radius:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181f; --panel:#1e222b; --ink:#f0ece4; --muted:#a3abba;
+    --line:#2e3542; --accent:#3fb28a; --accent-ink:#0f1216;
+    --warm:#f0a95f; --bad:#e8705f; --good:#3fb28a;
+    --chip:#272d38; --shadow:0 2px 0 rgba(0,0,0,.2), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15181f; --panel:#1e222b; --ink:#f0ece4; --muted:#a3abba;
+  --line:#2e3542; --accent:#3fb28a; --accent-ink:#0f1216;
+  --warm:#f0a95f; --bad:#e8705f; --good:#3fb28a;
+  --chip:#272d38; --shadow:0 2px 0 rgba(0,0,0,.2), 0 8px 24px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.5 ui-rounded,"SF Pro Rounded",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 56px}
+header.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+h1 .sub{display:block;font-size:13px;font-weight:500;color:var(--muted);letter-spacing:0}
+.spacer{flex:1}
+button{font:inherit;cursor:pointer}
+.ghost{
+  background:transparent;border:1.5px solid var(--line);color:var(--muted);
+  border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;
+}
+.ghost:hover{border-color:var(--accent);color:var(--accent)}
+.ghost[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:22px;
+}
+.hidden{display:none !important}
+
+/* ---- start screen ---- */
+.hero{text-align:center;padding:30px 22px 26px}
+.hero h2{margin:0 0 8px;font-size:27px;letter-spacing:-.02em}
+.hero p{margin:0 auto 20px;max-width:46ch;color:var(--muted)}
+.big{
+  background:var(--accent);color:var(--accent-ink);border:0;border-radius:999px;
+  padding:14px 30px;font-size:17px;font-weight:700;box-shadow:0 3px 0 rgba(0,0,0,.14);
+}
+.big:active{transform:translateY(2px);box-shadow:none}
+.big.alt{background:var(--chip);color:var(--ink);box-shadow:0 3px 0 rgba(0,0,0,.08)}
+.btnrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.modes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 18px}
+
+/* ---- play screen ---- */
+.hud{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pill{background:var(--chip);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700}
+.pill.streak{color:var(--warm)}
+.track{height:9px;background:var(--chip);border-radius:999px;overflow:hidden;margin-bottom:18px}
+.track>i{display:block;height:100%;background:var(--accent);width:0;transition:width .35s ease}
+.qtype{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.q{font-size:21px;font-weight:700;line-height:1.35;margin:0 0 18px;letter-spacing:-.01em}
+.opts{display:grid;gap:10px}
+.opt{
+  display:flex;align-items:flex-start;gap:11px;text-align:left;width:100%;
+  background:var(--panel);border:1.5px solid var(--line);border-radius:12px;
+  padding:13px 15px;color:var(--ink);font-size:16px;line-height:1.4;transition:.12s;
+}
+.opt:hover:not(:disabled){border-color:var(--accent);transform:translateX(2px)}
+.opt:disabled{cursor:default}
+.key{
+  flex:0 0 24px;height:24px;border-radius:7px;background:var(--chip);
+  display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--muted);
+}
+.opt.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.opt.sel .key{background:var(--accent);color:var(--accent-ink)}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 14%,transparent)}
+.opt.right .key{background:var(--good);color:#fff}
+.opt.wrong{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.opt.wrong .key{background:var(--bad);color:#fff}
+.hint{font-size:13px;color:var(--muted);margin:0 0 12px}
+input[type=text]{
+  font:inherit;width:100%;padding:13px 15px;border-radius:12px;
+  border:1.5px solid var(--line);background:var(--panel);color:var(--ink);
+}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+.feedback{margin-top:16px;border-radius:12px;padding:14px 16px;border-left:5px solid var(--good);background:var(--chip)}
+.feedback.no{border-left-color:var(--bad)}
+.feedback b{display:block;margin-bottom:3px}
+.feedback p{margin:0;font-size:15px;color:var(--muted)}
+.actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center}
+
+/* ---- results ---- */
+.score{font-size:52px;font-weight:800;letter-spacing:-.03em;line-height:1;margin:6px 0 2px}
+.missed{margin-top:18px;border-top:1px solid var(--line);padding-top:16px;text-align:left}
+.missed h3{font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 10px}
+.missed li{margin-bottom:9px;font-size:15px}
+
+/* ---- study ---- */
+.study h3{margin:24px 0 8px;font-size:16px;color:var(--accent);letter-spacing:.01em}
+.study h3:first-child{margin-top:0}
+.study dl{margin:0}
+.study dt{font-weight:700;margin-top:12px}
+.study dd{margin:2px 0 0;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{background:var(--chip);border-radius:999px;padding:3px 10px;font-size:13px;font-weight:600}
+footer{margin-top:22px;text-align:center;font-size:12px;color:var(--muted)}
+@media (max-width:480px){
+  .q{font-size:19px} .hero h2{font-size:23px} .score{font-size:44px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>Southern Road Trip<span class="sub">The South: the Growth of Industry &middot; Cities &amp; Industries</span></h1>
+    <span class="spacer"></span>
+    <button class="ghost" id="themeBtn" title="Switch light/dark">&#9680;</button>
+  </header>
+
+  <!-- START -->
+  <section id="start" class="card hero">
+    <h2>Ready to roll?</h2>
+    <p>Ten stops across the South. Answer questions about industry, cities, and the Sun Belt &mdash; then take a second pass at anything you miss.</p>
+    <div class="modes">
+      <button class="ghost" data-len="10" aria-pressed="true">Quick trip &middot; 10</button>
+      <button class="ghost" data-len="0">Full tour &middot; all</button>
+    </div>
+    <div class="btnrow">
+      <button class="big" id="playBtn">Start the trip</button>
+      <button class="big alt" id="studyBtn">Study guide</button>
+    </div>
+  </section>
+
+  <!-- PLAY -->
+  <section id="play" class="card hidden">
+    <div class="hud">
+      <span class="pill" id="pos">1 / 10</span>
+      <span class="pill" id="pts">0 pts</span>
+      <span class="pill streak hidden" id="streak">&#128293; 2</span>
+      <span class="spacer"></span>
+      <button class="ghost" id="quitBtn">Quit</button>
+    </div>
+    <div class="track"><i id="bar"></i></div>
+    <div class="qtype" id="qtype">Multiple choice</div>
+    <p class="q" id="qtext"></p>
+    <p class="hint hidden" id="hint"></p>
+    <div class="opts" id="opts"></div>
+    <div class="actions">
+      <button class="big" id="submitBtn">Check</button>
+      <button class="big alt hidden" id="nextBtn">Next stop &rarr;</button>
+    </div>
+    <div class="feedback hidden" id="fb"><b id="fbTitle"></b><p id="fbWhy"></p></div>
+  </section>
+
+  <!-- RESULTS -->
+  <section id="done" class="card hero hidden">
+    <h2 id="doneTitle">Trip complete!</h2>
+    <div class="score" id="finalScore">0</div>
+    <p id="doneLine">points</p>
+    <div class="btnrow">
+      <button class="big hidden" id="retryBtn">Retry the misses</button>
+      <button class="big alt" id="againBtn">New trip</button>
+      <button class="big alt" id="studyBtn2">Study guide</button>
+    </div>
+    <div class="missed hidden" id="missedBox">
+      <h3>Worth another look</h3>
+      <ul id="missedList"></ul>
+    </div>
+  </section>
+
+  <!-- STUDY -->
+  <section id="study" class="card study hidden">
+    <div class="hud">
+      <span class="pill">Study guide</span>
+      <span class="spacer"></span>
+      <button class="ghost" id="backBtn">&larr; Back</button>
+    </div>
+    <div id="studyBody"></div>
+  </section>
+
+  <footer>Study game built from the <em>US Geography: The South</em> worksheet, Part II &mdash; &copy; C. Page. For personal study use.</footer>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ *
+ * Question bank. Every item traces back to a worksheet question (#).
+ * type: mc | tf | multi | type
+ * ------------------------------------------------------------------ */
+const BANK = [
+ {n:1,type:"mc",q:"What is industrialization?",
+  opts:["Change from an agriculture based economy to an industry based economy",
+        "Change from an industry based economy to an agriculture based economy",
+        "Building highways and railroads between large cities",
+        "Growing more cotton and tobacco than any other region"],
+  a:0, why:"Industrialization is the change from an agriculture based economy to an industry based economy."},
+
+ {n:2,type:"tf",q:"Today, most people in the South live in cities.",
+  a:true, why:"True. The South used to be mostly rural, but today most Southerners are city dwellers."},
+
+ {n:3,type:"tf",q:"The textile industry is strong in the South.",
+  a:true, why:"True. Textiles means cloth and clothing, and it is still one of the South's big industries."},
+
+ {n:3,type:"multi",q:"Pick the textile “hot spots” of the South.",
+  opts:["Georgia","The Carolinas","Virginia","Michigan","Oregon","Maine"],
+  a:[0,1,2], why:"Textile hot spots: Georgia, the Carolinas (North and South), and Virginia."},
+
+ {n:4,type:"tf",q:"The South has a growing technology industry.",
+  a:true, why:"True. Technology is one of the fastest growing industries in the South."},
+
+ {n:4,type:"multi",q:"Pick the technology “hot spots” of the South.",
+  opts:["Raleigh–Durham, North Carolina","Austin, Texas","Detroit, Michigan","Pittsburgh, Pennsylvania"],
+  a:[0,1], why:"Technology hot spots: Raleigh–Durham, North Carolina and Austin, Texas."},
+
+ {n:5,type:"mc",q:"NASA stands for…",
+  opts:["National Aeronautics and Space Administration",
+        "North American Space Agency",
+        "National Astronaut and Science Academy",
+        "National Aerospace and Satellite Association"],
+  a:0, why:"NASA = National Aeronautics and Space Administration."},
+
+ {n:5,type:"type",q:"The last “A” in NASA stands for which word?",
+  hint:"National · Aeronautics · Space · ______",
+  accept:["administration"], why:"National Aeronautics and Space Administration."},
+
+ {n:5,type:"multi",q:"Which places are NASA centers in the South?",
+  opts:["Cape Canaveral, Florida","Houston, Texas","Huntsville, Alabama","Cape Cod, Massachusetts","Denver, Colorado"],
+  a:[0,1,2], why:"NASA's Southern hot spots are Cape Canaveral (Florida), Houston (Texas), and Huntsville (Alabama). Careful — Cape Cod is in Massachusetts, which is not in the South."},
+
+ {n:6,type:"tf",q:"Tallahassee, Florida is now a center for the cable television industry.",
+  a:false, why:"False. Atlanta, Georgia is the center of the cable television industry."},
+
+ {n:6,type:"mc",q:"Which Southern city is the center of the cable television industry?",
+  opts:["Atlanta, Georgia","Tallahassee, Florida","Memphis, Tennessee","Richmond, Virginia"],
+  a:0, why:"Atlanta, Georgia is the cable TV capital."},
+
+ {n:7,type:"multi",q:"Which two are the largest port cities of the South?",
+  opts:["Miami, Florida","New Orleans, Louisiana","Atlanta, Georgia","Nashville, Tennessee"],
+  a:[0,1], why:"Miami, Florida and New Orleans, Louisiana. A port city needs to be on the water — Atlanta and Nashville are inland."},
+
+ {n:8,type:"mc",q:"The Sun Belt stretches from the Atlantic Coast all the way to the coast of…",
+  opts:["California","Maine","Alaska","Oregon"],
+  a:0, why:"The Sun Belt is a broad band across the southern United States, from the Atlantic Coast to the coast of California."},
+
+ {n:8,type:"multi",q:"Why do people move to the Sun Belt region?",
+  opts:["Warm weather","Job opportunities","Long, snowy winters","Cheaper airplane tickets"],
+  a:[0,1], why:"People move to the Sun Belt for the warm weather and for job opportunities."},
+
+ {n:9,type:"multi",q:"Why is tourism a major industry in the South?",
+  opts:["Sunny beaches","Historic cities","The ability to go hiking","Deep snow for skiing"],
+  a:[0,1,2], why:"Tourists come to the South for the sunny beaches, the historic cities, and the chance to go hiking."},
+
+ {n:10,type:"mc",q:"Washington, D.C. is a planned city located on which river?",
+  opts:["The Potomac River","The Mississippi River","The Ohio River","The Rio Grande"],
+  a:0, why:"The nation's capital is a planned city on the Potomac River."},
+
+ {n:10,type:"mc",q:"In “Washington, D.C.,” what does “D.C.” stand for?",
+  opts:["District of Columbia","Downtown Capital","District Center","Delaware Colony"],
+  a:0, why:"D.C. = District of Columbia."},
+
+ {n:10,type:"mc",q:"Why is the nation's capital not part of any state?",
+  opts:["The Founding Fathers did not want one state to have more power or influence than the others",
+        "No state wanted to pay for it",
+        "It was built after all the states were full",
+        "So that it could sit closer to the ocean"],
+  a:0, why:"The Founding Fathers did not want one state to have more power or influence than the others, so the capital sits in its own district."},
+
+ {n:10,type:"tf",q:"Washington, D.C. is a planned city — it was designed on purpose, not grown by accident.",
+  a:true, why:"True. D.C. was planned and laid out to be the nation's capital."}
+];
+
+/* ------------------------- study guide ---------------------------- */
+const STUDY = [
+ {h:"The big idea",
+  items:[["Industrialization","The change from an agriculture based economy to an industry based economy."],
+         ["Where people live","Today most people in the South live in cities, not on farms."]]},
+ {h:"Industries and their hot spots",
+  items:[["Textiles (cloth &amp; clothing)","Strong in the South.", ["Georgia","The Carolinas","Virginia"]],
+         ["Technology","A growing industry in the South.", ["Raleigh–Durham, NC","Austin, TX"]],
+         ["NASA — National Aeronautics and Space Administration","Space centers in the South.", ["Cape Canaveral, FL","Houston, TX","Huntsville, AL"]],
+         ["Cable television","Centered in <b>Atlanta, Georgia</b> — not Tallahassee."],
+         ["Tourism","A major industry: sunny beaches, historic cities, and hiking."],
+         ["Ports","The two largest port cities are <b>Miami, FL</b> and <b>New Orleans, LA</b>."]]},
+ {h:"The Sun Belt",
+  items:[["What it is","A broad area of the United States stretching from the Atlantic Coast to the coast of California."],
+         ["Why people move there","Warm weather and job opportunities."]]},
+ {h:"The nation's capital",
+  items:[["Washington, D.C.","A <b>planned</b> city on the <b>Potomac River</b>."],
+         ["“D.C.”","Stands for <b>District of Columbia</b>."],
+         ["Why it is not in a state","The Founding Fathers did not want one state to have more power or influence than the others."]]}
+];
+
+/* ----------------------------- state ------------------------------ */
+const $ = id => document.getElementById(id);
+let deck=[], idx=0, pts=0, streak=0, best=0, sel=new Set(), locked=false, missed=[], tripLen=10, isRetry=false;
+
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
+const show = id => ["start","play","done","study"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
+
+/* theme */
+$("themeBtn").onclick = () => {
+  const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+  const cur = document.documentElement.getAttribute("data-theme") || (dark?"dark":"light");
+  const next = cur==="dark"?"light":"dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try{ localStorage.setItem("srt-theme", next); }catch(e){}
+};
+try{ const t=localStorage.getItem("srt-theme"); if(t) document.documentElement.setAttribute("data-theme",t); }catch(e){}
+
+/* trip length buttons */
+document.querySelectorAll("[data-len]").forEach(b=>{
+  b.onclick = () => {
+    document.querySelectorAll("[data-len]").forEach(x=>x.setAttribute("aria-pressed","false"));
+    b.setAttribute("aria-pressed","true");
+    tripLen = +b.dataset.len;
+  };
+});
+
+function startTrip(questions){
+  deck = questions;
+  idx=0; pts=0; streak=0; best=0; missed=[];
+  show("play"); render();
+}
+$("playBtn").onclick = () => { isRetry=false; const all=shuffle(BANK); startTrip(tripLen? all.slice(0,tripLen): all); };
+$("againBtn").onclick = () => { isRetry=false; show("start"); };
+$("studyBtn").onclick = $("studyBtn2").onclick = () => { renderStudy(); show("study"); };
+$("backBtn").onclick = () => show("start");
+$("quitBtn").onclick = () => show("start");
+$("retryBtn").onclick = () => { isRetry=true; startTrip(shuffle(missed)); };
+
+/* ----------------------------- render ----------------------------- */
+const LABELS = {mc:"Multiple choice", tf:"True or false", multi:"Pick every right answer", type:"Type your answer"};
+
+function render(){
+  const q = deck[idx];
+  sel = new Set(); locked=false;
+  $("pos").textContent = (idx+1)+" / "+deck.length;
+  $("pts").textContent = pts+" pts";
+  $("bar").style.width = (idx/deck.length*100)+"%";
+  $("streak").classList.toggle("hidden", streak<2);
+  $("streak").textContent = "\u{1F525} "+streak;
+  $("qtype").textContent = LABELS[q.type];
+  $("qtext").textContent = q.q;
+  $("fb").classList.add("hidden");
+  $("submitBtn").classList.remove("hidden");
+  $("nextBtn").classList.add("hidden");
+  $("submitBtn").textContent = "Check";
+  $("hint").classList.toggle("hidden", !q.hint);
+  if(q.hint) $("hint").textContent = q.hint;
+
+  const box = $("opts"); box.innerHTML="";
+  if(q.type==="type"){
+    const inp = document.createElement("input");
+    inp.type="text"; inp.id="typed"; inp.autocomplete="off"; inp.autocapitalize="off";
+    inp.spellcheck=false; inp.placeholder="Type it here…";
+    inp.addEventListener("keydown", e=>{ if(e.key==="Enter") $("submitBtn").click(); });
+    box.appendChild(inp); setTimeout(()=>inp.focus(),50);
+    return;
+  }
+  const opts = q.type==="tf" ? ["True","False"] : q.opts;
+  q._order = q.type==="tf" ? [0,1] : (q._order && q._order.length===opts.length ? q._order : shuffle(opts.map((_,i)=>i)));
+  q._order.forEach((orig,pos)=>{
+    const b=document.createElement("button");
+    b.className="opt"; b.dataset.orig=orig;
+    b.innerHTML = '<span class="key">'+(pos+1)+'</span><span>'+opts[orig]+'</span>';
+    b.onclick = ()=>{
+      if(locked) return;
+      if(q.type==="multi"){ sel.has(orig)?sel.delete(orig):sel.add(orig); b.classList.toggle("sel"); }
+      else { sel=new Set([orig]); box.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel")); b.classList.add("sel"); }
+    };
+    box.appendChild(b);
+  });
+}
+
+function correctSet(q){
+  if(q.type==="tf") return new Set([q.a?0:1]);          // 0 = True, 1 = False
+  if(q.type==="multi") return new Set(q.a);
+  return new Set([q.a]);
+}
+const norm = s => s.toLowerCase().replace(/[^a-z]/g,"");
+
+$("submitBtn").onclick = () => {
+  if(locked) return;
+  const q = deck[idx];
+  let ok=false;
+  if(q.type==="type"){
+    const v = norm($("typed").value);
+    if(!v) return;
+    ok = q.accept.some(a=>norm(a)===v || (v.length>4 && norm(a).startsWith(v)));
+    $("typed").disabled = true;
+  } else {
+    if(!sel.size) return;
+    const want = correctSet(q);
+    ok = sel.size===want.size && [...sel].every(x=>want.has(x));
+    $("opts").querySelectorAll(".opt").forEach(b=>{
+      const o=+b.dataset.orig; b.disabled=true; b.classList.remove("sel");
+      if(want.has(o)) b.classList.add("right");
+      else if(sel.has(o)) b.classList.add("wrong");
+    });
+  }
+  locked=true;
+  if(ok){
+    streak++; best=Math.max(best,streak);
+    const bonus = streak>=3 ? 5 : 0;
+    pts += 10 + bonus;
+    $("fb").className="feedback";
+    $("fbTitle").textContent = bonus ? "Correct! +"+(10+bonus)+" (streak bonus)" : "Correct! +10";
+  } else {
+    streak=0;
+    missed.push(q);
+    $("fb").className="feedback no";
+    $("fbTitle").textContent = "Not quite.";
+  }
+  $("fbWhy").textContent = q.why;
+  $("fb").classList.remove("hidden");
+  $("pts").textContent = pts+" pts";
+  $("streak").classList.toggle("hidden", streak<2);
+  $("streak").textContent = "\u{1F525} "+streak;
+  $("submitBtn").classList.add("hidden");
+  $("nextBtn").classList.remove("hidden");
+  $("nextBtn").textContent = idx===deck.length-1 ? "See results →" : "Next stop →";
+  $("nextBtn").focus();
+};
+
+$("nextBtn").onclick = () => {
+  idx++;
+  if(idx>=deck.length) finish(); else render();
+};
+
+function finish(){
+  $("bar").style.width="100%";
+  const total = deck.length, right = total - missed.length;
+  const pct = Math.round(right/total*100);
+  $("finalScore").textContent = right+" / "+total;
+  $("doneLine").textContent = pts+" points · best streak "+best+" · "+pct+"%";
+  $("doneTitle").textContent =
+    pct===100 ? (isRetry?"Cleaned them up!":"Perfect trip!") :
+    pct>=80 ? "Nice driving!" :
+    pct>=60 ? "Good start — keep going." : "Let's run it again.";
+  const box=$("missedBox"), list=$("missedList");
+  if(missed.length){
+    list.innerHTML = missed.map(q=>"<li><b>"+q.q+"</b><br>"+q.why+"</li>").join("");
+    box.classList.remove("hidden");
+    $("retryBtn").classList.remove("hidden");
+    $("retryBtn").textContent = "Retry the "+missed.length+" miss"+(missed.length>1?"es":"");
+  } else {
+    box.classList.add("hidden");
+    $("retryBtn").classList.add("hidden");
+  }
+  show("done");
+}
+
+/* keyboard: 1-4 pick, Enter check/next */
+document.addEventListener("keydown", e=>{
+  if($("play").classList.contains("hidden")) return;
+  if(e.target.tagName==="INPUT") return;
+  if(/^[1-9]$/.test(e.key)){
+    const b=$("opts").querySelectorAll(".opt")[+e.key-1];
+    if(b && !b.disabled){ b.click(); e.preventDefault(); }
+  } else if(e.key==="Enter"){
+    (locked ? $("nextBtn") : $("submitBtn")).click(); e.preventDefault();
+  }
+});
+
+/* ----------------------------- study ------------------------------ */
+function renderStudy(){
+  $("studyBody").innerHTML = STUDY.map(sec=>
+    "<h3>"+sec.h+"</h3><dl>"+sec.items.map(it=>
+      "<dt>"+it[0]+"</dt><dd>"+it[1]+
+      (it[2]?'<div class="tags">'+it[2].map(t=>'<span class="tag">'+t+'</span>').join("")+'</div>':"")+
+      "</dd>").join("")+"</dl>"
+  ).join("");
+}
+</script>
+</body>
+</html>
