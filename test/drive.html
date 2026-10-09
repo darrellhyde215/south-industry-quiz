@@ -1,0 +1,75 @@
+<!DOCTYPE html><meta charset="utf-8"><body>
+<!-- Black-box test driver for index.html.
+     Run:  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+             --headless=new --disable-gpu --allow-file-access-from-files \
+             --virtual-time-budget=8000 --dump-dom "file://$PWD/test/drive.html"
+     Then read the <pre id="log"> block: any line starting with FAIL is a real failure.
+     It answers every question correctly except one deliberate miss, so a healthy run
+     ends at (n-1)/n with a 1-item retry pass. Must be run from a file:// URL --
+     a cross-origin https page blocks iframe access, so it cannot test the live site. -->
+<iframe id="f" src="../index.html" width="900" height="700"></iframe>
+<pre id="log"></pre>
+<script>
+const log=[]; const say=s=>{log.push(s);document.getElementById("log").textContent=log.join("\n");};
+window.onerror=e=>say("HARNESS ERROR: "+e);
+async function run(){
+  const f=document.getElementById("f"), d=f.contentDocument, w=f.contentWindow;
+  w.onerror=e=>say("PAGE ERROR: "+e);
+  const $=id=>d.getElementById(id);
+  const src=await (await fetch(f.src)).text();
+  const start=src.indexOf("const BANK = ["), end=src.indexOf("\n];", start);
+  const BANK=eval(src.slice(start+13, end+2));
+  say("bank size: "+BANK.length);
+  const byText={}; BANK.forEach(q=>{ (byText[q.q]=byText[q.q]||[]).push(q); });
+  say("duplicate prompts: "+Object.values(byText).filter(a=>a.length>1).length);
+  const answersOf=q => q.type==="tf" ? [q.a?"True":"False"]
+                     : q.type==="multi" ? q.a.map(i=>q.opts[i])
+                     : q.type==="mc" ? [q.opts[q.a]] : [q.accept[0]];
+  d.querySelector('[data-len="0"]').click();
+  $("playBtn").click();
+  let wrongDone=false, answered=0, seen=new Set();
+  while(!$("play").classList.contains("hidden")){
+    const text=$("qtext").textContent;
+    const q=(byText[text]||[])[0];
+    if(!q){ say("FAIL: on-screen question not in bank: "+text); break; }
+    seen.add(text);
+    const want=answersOf(q);
+    const makeWrong = !wrongDone && q.type==="mc";
+    if(q.type==="type"){
+      $("typed").value = makeWrong ? "zzz" : want[0].toUpperCase()+" ";
+    } else {
+      const btns=[...$("opts").querySelectorAll(".opt")];
+      if(btns.length !== (q.type==="tf"?2:q.opts.length)) say("FAIL: option count on "+text);
+      btns.forEach(b=>{
+        const label=b.lastElementChild.textContent;
+        const isRight=want.includes(label);
+        if(makeWrong ? !isRight : isRight) b.click();
+      });
+    }
+    if(makeWrong) wrongDone=true;
+    $("submitBtn").click();
+    if($("fb").classList.contains("hidden")){ say("FAIL: no feedback on "+text); break; }
+    const judged=$("fb").className.includes("no")?"WRONG":"RIGHT";
+    const expect=makeWrong?"WRONG":"RIGHT";
+    if(judged!==expect) say("FAIL ["+q.type+"] graded "+judged+", expected "+expect+" :: "+text);
+    if(!$("fbWhy").textContent) say("FAIL: no explanation on "+text);
+    answered++;
+    if(answered>60){ say("FAIL: runaway"); break; }
+    $("nextBtn").click();
+  }
+  say("answered: "+answered+", distinct: "+seen.size);
+  say("results visible: "+!$("done").classList.contains("hidden"));
+  say("score: "+$("finalScore").textContent+" | "+$("doneLine").textContent);
+  say("retry btn: "+($("retryBtn").classList.contains("hidden")?"HIDDEN":$("retryBtn").textContent));
+  say("missed listed: "+$("missedList").children.length);
+  $("retryBtn").click();
+  say("retry pass -> play visible: "+!$("play").classList.contains("hidden")+", pos "+$("pos").textContent);
+  $("quitBtn").click(); $("studyBtn").click();
+  say("study sections: "+$("studyBody").querySelectorAll("h3").length+", terms: "+$("studyBody").querySelectorAll("dt").length);
+  say("study def ok: "+/agriculture based economy to an industry based economy/.test($("studyBody").textContent));
+  $("backBtn").click(); d.querySelector('[data-len="10"]').click(); $("playBtn").click();
+  say("quick trip pos: "+$("pos").textContent);
+  say("DONE");
+}
+document.getElementById("f").onload=()=>setTimeout(run,100);
+</script>
