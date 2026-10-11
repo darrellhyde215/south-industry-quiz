@@ -70,6 +70,12 @@ button{font:inherit;cursor:pointer}
 .big.alt{background:var(--chip);color:var(--ink);box-shadow:0 3px 0 rgba(0,0,0,.08)}
 .btnrow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .modes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 18px}
+.picker{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 6px}
+.picklabel{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.deckhead{font-size:19px;letter-spacing:-.01em;margin:30px 0 2px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.deckhead:first-child{margin-top:0}
+.bydeck{margin:10px 0 0;font-size:14px;font-weight:600;color:var(--muted)}
+.missed .who{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:block}
 
 /* ---- play screen ---- */
 .hud{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
@@ -132,7 +138,7 @@ footer{margin-top:22px;text-align:center;font-size:12px;line-height:1.5;color:va
 <body>
 <div class="wrap">
   <header class="top">
-    <h1>Southern Road Trip<span class="sub">The South: the Growth of Industry &middot; Cities &amp; Industries</span></h1>
+    <h1>Southern Road Trip<span class="sub">US Geography: The South &middot; the Growth of Industry</span></h1>
     <span class="spacer"></span>
     <button class="ghost" id="themeBtn" title="Switch light/dark">&#9680;</button>
   </header>
@@ -140,10 +146,13 @@ footer{margin-top:22px;text-align:center;font-size:12px;line-height:1.5;color:va
   <!-- START -->
   <section id="start" class="card hero">
     <h2>Ready to roll?</h2>
-    <p>Ten stops across the South. Answer questions about industry, cities, and the Sun Belt &mdash; then take a second pass at anything you miss.</p>
+    <p>Answer questions about the South, then take a second pass at anything you miss.</p>
+    <p class="picklabel">What do you want to study?</p>
+    <div class="picker" id="picker"></div>
+    <p class="picklabel" style="margin-top:16px">How long?</p>
     <div class="modes">
-      <button class="ghost" data-len="10" aria-pressed="true">Quick trip &middot; 10</button>
-      <button class="ghost" data-len="0">Full tour &middot; all</button>
+      <button class="ghost" id="lenQuick" data-len="10" aria-pressed="true">Quick trip</button>
+      <button class="ghost" id="lenAll" data-len="0">Full tour</button>
     </div>
     <div class="btnrow">
       <button class="big" id="playBtn">Start the trip</button>
@@ -177,6 +186,7 @@ footer{margin-top:22px;text-align:center;font-size:12px;line-height:1.5;color:va
     <h2 id="doneTitle">Trip complete!</h2>
     <div class="score" id="finalScore">0</div>
     <p id="doneLine">points</p>
+    <p class="bydeck hidden" id="byDeck"></p>
     <div class="btnrow">
       <button class="big hidden" id="retryBtn">Retry the misses</button>
       <button class="big alt" id="againBtn">New trip</button>
@@ -198,121 +208,287 @@ footer{margin-top:22px;text-align:center;font-size:12px;line-height:1.5;color:va
     <div id="studyBody"></div>
   </section>
 
-  <footer>Study game built from the <em>US Geography: The South</em> worksheet, Part II, and its answer key &mdash; &copy; C. Page.<br>
+  <footer>Study game built from the <em>US Geography: The South</em> worksheets and answer keys, Parts I and II &mdash; &copy; C. Page.<br>
   Questions and answers belong to their author and are used here for personal study only. Not affiliated with or endorsed by the author.</footer>
 </div>
 
 <script>
 /* ------------------------------------------------------------------ *
- * Question bank. Every item traces back to a worksheet question (#).
+ * Content decks. One per worksheet; `n` is the question number on that
+ * worksheet. Adding a document = appending another deck.
  * type: mc | tf | multi | type
  * ------------------------------------------------------------------ */
-const BANK = [
- {n:1,type:"mc",q:"What is industrialization?",
-  opts:["Change from an agriculture based economy to an industry based economy",
-        "Change from an industry based economy to an agriculture based economy",
-        "Building highways and railroads between large cities",
-        "Growing more cotton and tobacco than any other region"],
-  a:0, why:"Industrialization is the change from an agriculture based economy to an industry based economy."},
+const DECKS = [
+{
+ id:"part1", chip:"Part I: The Land", title:"Part I: The Land of the South",
+ bank:[
+  {n:1,type:"multi",q:"Pick the things about the South's geography that help people make a living.",
+   opts:["Warm climate","Plenty of rain","Flat land","Fertile soil","Long, cold winters","Steep, rocky mountains"],
+   a:[0,1,2,3], why:"Warm climate, plenty of rain, flat land, fertile soil, and a long growing season are what make a living possible here."},
 
- {n:2,type:"tf",q:"Today, most people in the South live in cities.",
-  a:true, why:"True. The South used to be mostly rural, but today most Southerners are city dwellers."},
+  {n:1,type:"tf",q:"The South has a long growing season.",
+   a:true, why:"True. A long growing season is one of the big reasons farming works so well in the South."},
 
- {n:3,type:"tf",q:"The textile industry is strong in the South.",
-  a:true, why:"True. Textiles means cloth and clothing, and it is still one of the South's big industries."},
+  {n:2,type:"mc",q:"In the 1890s, which crop was \u201cKing\u201d in the South?",
+   opts:["Cotton","Rice","Peanuts","Tobacco"],
+   a:0, why:"In the 1890s cotton was King, especially in states like Mississippi."},
 
- {n:3,type:"multi",q:"Pick the textile “hot spots” of the South.",
-  opts:["Georgia","The Carolinas","Virginia","Michigan","Oregon","Maine"],
-  a:[0,1,2], why:"Textile hot spots: Georgia, the Carolinas (North and South), and Virginia."},
+  {n:2,type:"mc",q:"Which state was especially known for cotton in the 1890s?",
+   opts:["Mississippi","Ohio","Arizona","Maine"],
+   a:0, why:"Mississippi was one of the biggest cotton states when cotton was King."},
 
- {n:4,type:"tf",q:"The South has a growing technology industry.",
-  a:true, why:"True. Technology is one of the fastest growing industries in the South."},
+  {n:2,type:"type",q:"Which insect destroyed the South's cotton crop?",
+   hint:"Two words. It starts with a B.",
+   accept:["boll weevil","bollweevil"], why:"The boll weevil destroyed the cotton crop."},
 
- {n:4,type:"multi",q:"Pick the technology “hot spots” of the South.",
-  opts:["Raleigh–Durham, North Carolina","Austin, Texas","Detroit, Michigan","Pittsburgh, Pennsylvania"],
-  a:[0,1], why:"Technology hot spots: Raleigh–Durham, North Carolina and Austin, Texas."},
+  {n:2,type:"mc",q:"After the boll weevil destroyed the cotton crop, what happened to many farmers?",
+   opts:["They went bankrupt","They got rich","They switched to mining coal","They moved to Florida"],
+   a:0, why:"With the crop gone, farmers went bankrupt."},
 
- {n:5,type:"mc",q:"NASA stands for…",
-  opts:["National Aeronautics and Space Administration",
-        "North American Space Agency",
-        "National Astronaut and Science Academy",
-        "National Aerospace and Satellite Association"],
-  a:0, why:"NASA = National Aeronautics and Space Administration."},
+  {n:2,type:"mc",q:"How do Southern farmers try to keep that from happening again?",
+   opts:["They diversify their crops","They plant only cotton","They stop farming in dry years","They buy cotton from other countries"],
+   a:0, why:"Today farmers diversify, so losing one crop does not wipe them out."},
 
- {n:5,type:"type",q:"The last “A” in NASA stands for which word?",
-  hint:"National · Aeronautics · Space · ______",
-  accept:["administration"], why:"National Aeronautics and Space Administration."},
+  {n:2,type:"mc",q:"What does it mean to diversify crops?",
+   opts:["Grow several different crops instead of just one","Grow as much cotton as possible","Sell the crop overseas","Use more fertilizer"],
+   a:0, why:"Diversify means growing a variety of crops rather than depending on a single one."},
 
- {n:5,type:"multi",q:"Which places are NASA centers in the South?",
-  opts:["Cape Canaveral, Florida","Houston, Texas","Huntsville, Alabama","Cape Cod, Massachusetts","Denver, Colorado"],
-  a:[0,1,2], why:"NASA's Southern hot spots are Cape Canaveral (Florida), Houston (Texas), and Huntsville (Alabama). Careful — Cape Cod is in Massachusetts, which is not in the South."},
+  {n:3,type:"multi",q:"Which citrus fruits grow in Florida?",
+   opts:["Limes","Tangerines","Grapefruits","Oranges","Apples","Cherries"],
+   a:[0,1,2,3], why:"Florida is warm and sunny most of the year, so it grows limes, tangerines, grapefruits, and oranges."},
 
- {n:6,type:"tf",q:"Tallahassee, Florida is now a center for the cable television industry.",
-  a:false, why:"False. Atlanta, Georgia is the center of the cable television industry."},
+  {n:4,type:"mc",q:"What grows in Arkansas, Louisiana, and Mississippi, where it is warm and moist?",
+   opts:["Rice","Potatoes","Wheat","Apples"],
+   a:0, why:"Rice grows in warm, moist areas like Arkansas, Louisiana, and Mississippi."},
 
- {n:6,type:"mc",q:"Which Southern city is the center of the cable television industry?",
-  opts:["Atlanta, Georgia","Tallahassee, Florida","Memphis, Tennessee","Richmond, Virginia"],
-  a:0, why:"Atlanta, Georgia is the cable TV capital."},
+  {n:5,type:"multi",q:"What grows in Georgia?",
+   opts:["Peaches","Peanuts","Pecans","Pineapples","Cranberries"],
+   a:[0,1,2], why:"Georgia grows peaches, peanuts, and pecans."},
 
- {n:7,type:"multi",q:"Which two are the largest port cities of the South?",
-  opts:["Miami, Florida","New Orleans, Louisiana","Atlanta, Georgia","Nashville, Tennessee"],
-  a:[0,1], why:"Miami, Florida and New Orleans, Louisiana. A port city needs to be on the water — Atlanta and Nashville are inland."},
+  {n:6,type:"mc",q:"What does Texas raise more of than any other state?",
+   opts:["Cattle","Sheep","Chickens","Horses"],
+   a:0, why:"Texas raises more cattle than any other state. That is why the University of Texas mascot is the longhorn."},
 
- {n:8,type:"mc",q:"The Sun Belt stretches from the Atlantic Coast all the way to the coast of…",
-  opts:["California","Maine","Alaska","Oregon"],
-  a:0, why:"The Sun Belt is a broad band across the southern United States, from the Atlantic Coast to the coast of California."},
+  {n:7,type:"multi",q:"Why has farming always been part of the South's economy?",
+   opts:["Plentiful rainfall","Fertile soil","Flat land","Plenty of sun","A short growing season"],
+   a:[0,1,2,3], why:"Plentiful rainfall, fertile soil, flat land, and plenty of sun have always made the South good for farming."},
 
- {n:8,type:"multi",q:"Why do people move to the Sun Belt region?",
-  opts:["Warm weather","Job opportunities","Long, snowy winters","Cheaper airplane tickets"],
-  a:[0,1], why:"People move to the Sun Belt for the warm weather and for job opportunities."},
+  {n:8,type:"multi",q:"Which states are drilled for oil and natural gas?",
+   opts:["Louisiana","Oklahoma","Texas","Kentucky","West Virginia"],
+   a:[0,1,2], why:"Oil and natural gas come from Louisiana, Oklahoma, and Texas."},
 
- {n:9,type:"multi",q:"Why is tourism a major industry in the South?",
-  opts:["Sunny beaches","Historic cities","The ability to go hiking","Deep snow for skiing"],
-  a:[0,1,2], why:"Tourists come to the South for the sunny beaches, the historic cities, and the chance to go hiking."},
+  {n:8,type:"multi",q:"Which states mine coal?",
+   opts:["Alabama","Kentucky","West Virginia","Tennessee","Texas","Louisiana"],
+   a:[0,1,2,3], why:"Coal is mined in Alabama, Kentucky, West Virginia, and Tennessee."},
 
- {n:10,type:"mc",q:"Washington, D.C. is a planned city located on which river?",
-  opts:["The Potomac River","The Mississippi River","The Ohio River","The Rio Grande"],
-  a:0, why:"The nation's capital is a planned city on the Potomac River."},
+  {n:9,type:"mc",q:"What are petrochemicals?",
+   opts:["Substances such as plastics, paint, nylon, and asphalt that come from petroleum",
+         "Chemicals sprayed on cotton to kill the boll weevil",
+         "Minerals taken out of coal seams",
+         "Fuels made from corn and sugar"],
+   a:0, why:"Petrochemicals are substances such as plastics, paint, nylon, and asphalt that come from petroleum."},
 
- {n:10,type:"mc",q:"In “Washington, D.C.,” what does “D.C.” stand for?",
-  opts:["District of Columbia","Downtown Capital","District Center","Delaware Colony"],
-  a:0, why:"D.C. = District of Columbia."},
+  {n:9,type:"multi",q:"Which of these are petrochemicals?",
+   opts:["Plastics","Paint","Nylon","Asphalt","Cotton","Timber"],
+   a:[0,1,2,3], why:"Plastics, paint, nylon, and asphalt all come from petroleum. Cotton and timber grow."},
 
- {n:10,type:"mc",q:"Why is the nation's capital not part of any state?",
-  opts:["The Founding Fathers did not want one state to have more power or influence than the others",
-        "No state wanted to pay for it",
-        "It was built after all the states were full",
-        "So that it could sit closer to the ocean"],
-  a:0, why:"The Founding Fathers did not want one state to have more power or influence than the others, so the capital sits in its own district."},
+  {n:10,type:"multi",q:"Where is the South's fishing industry strongest?",
+   opts:["Louisiana","Texas","Florida","Kentucky","Tennessee"],
+   a:[0,1,2], why:"Fishing is strongest in Louisiana, Texas, and Florida."},
 
- {n:10,type:"tf",q:"Washington, D.C. is a planned city — it was designed on purpose, not grown by accident.",
-  a:true, why:"True. D.C. was planned and laid out to be the nation's capital."}
+  {n:10,type:"tf",q:"The Chesapeake Bay area and Virginia are famous for shellfish.",
+   a:true, why:"True, but the fishing industry itself is strongest in Louisiana, Texas, and Florida."},
+
+  {n:11,type:"mc",q:"Where is the timber industry successful in the South?",
+   opts:["Almost everywhere","Only in Florida","Only along the Atlantic Coast","Only in Texas"],
+   a:0, why:"Timber does well almost everywhere in the South."},
+
+  {n:12,type:"multi",q:"What is timber used for?",
+   opts:["Paper","Furniture","Houses","Gasoline"],
+   a:[0,1,2], why:"Timber becomes paper, furniture, and houses."},
+
+  {n:13,type:"mc",q:"Which state has the nation's largest hardwood furniture industry?",
+   opts:["North Carolina","Texas","Florida","Kentucky"],
+   a:0, why:"North Carolina has the nation's largest hardwood furniture industry."},
+
+  {n:14,type:"multi",q:"Which of these are top resources of the South?",
+   opts:["Oil","Cattle","Timber","Fish","Citrus fruit","Diamonds","Gold"],
+   a:[0,1,2,3,4], why:"Oil, cattle, timber, fish, and citrus fruit are all major Southern resources."},
+
+  {n:15,type:"mc",q:"Fun fact: which country leads the world in cotton production?",
+   opts:["China","The United States","Egypt","Brazil"],
+   a:0, why:"China leads the world. The United States, India, Pakistan, and Uzbekistan are also major producers."}
+ ],
+ study:[
+  {h:"Why farming works in the South",
+   items:[["The land itself","Warm climate, plenty of rain, flat land, fertile soil, and a long growing season."],
+          ["Why farming has always been part of the economy","Plentiful rainfall, fertile soil, flat land, and plenty of sun."]]},
+  {h:"The cotton story",
+   items:[["1890s","Cotton was King, especially in states like Mississippi."],
+          ["The boll weevil","The insect that destroyed the cotton crop."],
+          ["Bankrupt","With the crop gone, farmers went bankrupt."],
+          ["Diversify","Today farmers grow several different crops, so one pest cannot wipe them out."]]},
+  {h:"What grows where",
+   items:[["Florida","Warm and sunny most of the year, so it grows citrus.", ["limes","tangerines","grapefruits","oranges"]],
+          ["Arkansas, Louisiana, Mississippi","Rice, which needs warm, moist land."],
+          ["Georgia","Three P's.", ["peaches","peanuts","pecans"]],
+          ["Texas","Raises more cattle than any other state."]]},
+  {h:"Drilled and mined",
+   items:[["Oil and natural gas","Drilled in three states.", ["Louisiana","Oklahoma","Texas"]],
+          ["Coal","Mined in four states.", ["Alabama","Kentucky","West Virginia","Tennessee"]],
+          ["Petrochemicals","Substances that come from petroleum.", ["plastics","paint","nylon","asphalt"]]]},
+  {h:"Fishing and timber",
+   items:[["Fishing is strongest in","Three Gulf and Atlantic states.", ["Louisiana","Texas","Florida"]],
+          ["Shellfish","The Chesapeake Bay area and Virginia are famous for it."],
+          ["Timber","Successful almost everywhere in the South.", ["paper","furniture","houses"]],
+          ["North Carolina","Has the nation's largest hardwood furniture industry."]]}
+ ]
+},
+{
+ id:"part2", chip:"Part II: Cities & Industries", title:"Part II: Southern Cities & Industries",
+ bank:[
+   {n:1,type:"mc",q:"What is industrialization?",
+    opts:["Change from an agriculture based economy to an industry based economy",
+          "Change from an industry based economy to an agriculture based economy",
+          "Building highways and railroads between large cities",
+          "Growing more cotton and tobacco than any other region"],
+    a:0, why:"Industrialization is the change from an agriculture based economy to an industry based economy."},
+
+   {n:2,type:"tf",q:"Today, most people in the South live in cities.",
+    a:true, why:"True. The South used to be mostly rural, but today most Southerners are city dwellers."},
+
+   {n:3,type:"tf",q:"The textile industry is strong in the South.",
+    a:true, why:"True. Textiles means cloth and clothing, and it is still one of the South's big industries."},
+
+   {n:3,type:"multi",q:"Pick the textile “hot spots” of the South.",
+    opts:["Georgia","The Carolinas","Virginia","Michigan","Oregon","Maine"],
+    a:[0,1,2], why:"Textile hot spots: Georgia, the Carolinas (North and South), and Virginia."},
+
+   {n:4,type:"tf",q:"The South has a growing technology industry.",
+    a:true, why:"True. Technology is one of the fastest growing industries in the South."},
+
+   {n:4,type:"multi",q:"Pick the technology “hot spots” of the South.",
+    opts:["Raleigh–Durham, North Carolina","Austin, Texas","Detroit, Michigan","Pittsburgh, Pennsylvania"],
+    a:[0,1], why:"Technology hot spots: Raleigh–Durham, North Carolina and Austin, Texas."},
+
+   {n:5,type:"mc",q:"NASA stands for…",
+    opts:["National Aeronautics and Space Administration",
+          "North American Space Agency",
+          "National Astronaut and Science Academy",
+          "National Aerospace and Satellite Association"],
+    a:0, why:"NASA = National Aeronautics and Space Administration."},
+
+   {n:5,type:"type",q:"The last “A” in NASA stands for which word?",
+    hint:"National · Aeronautics · Space · ______",
+    accept:["administration"], why:"National Aeronautics and Space Administration."},
+
+   {n:5,type:"multi",q:"Which places are NASA centers in the South?",
+    opts:["Cape Canaveral, Florida","Houston, Texas","Huntsville, Alabama","Cape Cod, Massachusetts","Denver, Colorado"],
+    a:[0,1,2], why:"NASA's Southern hot spots are Cape Canaveral (Florida), Houston (Texas), and Huntsville (Alabama). Careful — Cape Cod is in Massachusetts, which is not in the South."},
+
+   {n:6,type:"tf",q:"Tallahassee, Florida is now a center for the cable television industry.",
+    a:false, why:"False. Atlanta, Georgia is the center of the cable television industry."},
+
+   {n:6,type:"mc",q:"Which Southern city is the center of the cable television industry?",
+    opts:["Atlanta, Georgia","Tallahassee, Florida","Memphis, Tennessee","Richmond, Virginia"],
+    a:0, why:"Atlanta, Georgia is the cable TV capital."},
+
+   {n:7,type:"multi",q:"Which two are the largest port cities of the South?",
+    opts:["Miami, Florida","New Orleans, Louisiana","Atlanta, Georgia","Nashville, Tennessee"],
+    a:[0,1], why:"Miami, Florida and New Orleans, Louisiana. A port city needs to be on the water — Atlanta and Nashville are inland."},
+
+   {n:8,type:"mc",q:"The Sun Belt stretches from the Atlantic Coast all the way to the coast of…",
+    opts:["California","Maine","Alaska","Oregon"],
+    a:0, why:"The Sun Belt is a broad band across the southern United States, from the Atlantic Coast to the coast of California."},
+
+   {n:8,type:"multi",q:"Why do people move to the Sun Belt region?",
+    opts:["Warm weather","Job opportunities","Long, snowy winters","Cheaper airplane tickets"],
+    a:[0,1], why:"People move to the Sun Belt for the warm weather and for job opportunities."},
+
+   {n:9,type:"multi",q:"Why is tourism a major industry in the South?",
+    opts:["Sunny beaches","Historic cities","The ability to go hiking","Deep snow for skiing"],
+    a:[0,1,2], why:"Tourists come to the South for the sunny beaches, the historic cities, and the chance to go hiking."},
+
+   {n:10,type:"mc",q:"Washington, D.C. is a planned city located on which river?",
+    opts:["The Potomac River","The Mississippi River","The Ohio River","The Rio Grande"],
+    a:0, why:"The nation's capital is a planned city on the Potomac River."},
+
+   {n:10,type:"mc",q:"In “Washington, D.C.,” what does “D.C.” stand for?",
+    opts:["District of Columbia","Downtown Capital","District Center","Delaware Colony"],
+    a:0, why:"D.C. = District of Columbia."},
+
+   {n:10,type:"mc",q:"Why is the nation's capital not part of any state?",
+    opts:["The Founding Fathers did not want one state to have more power or influence than the others",
+          "No state wanted to pay for it",
+          "It was built after all the states were full",
+          "So that it could sit closer to the ocean"],
+    a:0, why:"The Founding Fathers did not want one state to have more power or influence than the others, so the capital sits in its own district."},
+
+   {n:10,type:"tf",q:"Washington, D.C. is a planned city — it was designed on purpose, not grown by accident.",
+    a:true, why:"True. D.C. was planned and laid out to be the nation's capital."}
+ ],
+ study:[
+   {h:"The big idea",
+    items:[["Industrialization","The change from an agriculture based economy to an industry based economy."],
+           ["Where people live","Today most people in the South live in cities, not on farms."]]},
+   {h:"Industries and their hot spots",
+    items:[["Textiles (cloth &amp; clothing)","Strong in the South.", ["Georgia","The Carolinas","Virginia"]],
+           ["Technology","A growing industry in the South.", ["Raleigh–Durham, NC","Austin, TX"]],
+           ["NASA — National Aeronautics and Space Administration","Space centers in the South.", ["Cape Canaveral, FL","Houston, TX","Huntsville, AL"]],
+           ["Cable television","Centered in <b>Atlanta, Georgia</b> — not Tallahassee."],
+           ["Tourism","A major industry: sunny beaches, historic cities, and hiking."],
+           ["Ports","The two largest port cities are <b>Miami, FL</b> and <b>New Orleans, LA</b>."]]},
+   {h:"The Sun Belt",
+    items:[["What it is","A broad area of the United States stretching from the Atlantic Coast to the coast of California."],
+           ["Why people move there","Warm weather and job opportunities."]]},
+   {h:"The nation's capital",
+    items:[["Washington, D.C.","A <b>planned</b> city on the <b>Potomac River</b>."],
+           ["“D.C.”","Stands for <b>District of Columbia</b>."],
+           ["Why it is not in a state","The Founding Fathers did not want one state to have more power or influence than the others."]]}
+ ]
+}
 ];
-
-/* ------------------------- study guide ---------------------------- */
-const STUDY = [
- {h:"The big idea",
-  items:[["Industrialization","The change from an agriculture based economy to an industry based economy."],
-         ["Where people live","Today most people in the South live in cities, not on farms."]]},
- {h:"Industries and their hot spots",
-  items:[["Textiles (cloth &amp; clothing)","Strong in the South.", ["Georgia","The Carolinas","Virginia"]],
-         ["Technology","A growing industry in the South.", ["Raleigh–Durham, NC","Austin, TX"]],
-         ["NASA — National Aeronautics and Space Administration","Space centers in the South.", ["Cape Canaveral, FL","Houston, TX","Huntsville, AL"]],
-         ["Cable television","Centered in <b>Atlanta, Georgia</b> — not Tallahassee."],
-         ["Tourism","A major industry: sunny beaches, historic cities, and hiking."],
-         ["Ports","The two largest port cities are <b>Miami, FL</b> and <b>New Orleans, LA</b>."]]},
- {h:"The Sun Belt",
-  items:[["What it is","A broad area of the United States stretching from the Atlantic Coast to the coast of California."],
-         ["Why people move there","Warm weather and job opportunities."]]},
- {h:"The nation's capital",
-  items:[["Washington, D.C.","A <b>planned</b> city on the <b>Potomac River</b>."],
-         ["“D.C.”","Stands for <b>District of Columbia</b>."],
-         ["Why it is not in a state","The Founding Fathers did not want one state to have more power or influence than the others."]]}
-];
+DECKS.forEach(d => d.bank.forEach(q => q.deck = d.id));
+const DECK_BY = {}; DECKS.forEach(d => DECK_BY[d.id] = d);
 
 /* ----------------------------- state ------------------------------ */
 const $ = id => document.getElementById(id);
 let deck=[], idx=0, pts=0, streak=0, best=0, sel=new Set(), locked=false, missed=[], tripLen=10, isRetry=false;
+let picked = new Set(DECKS.map(d=>d.id));
+
+/* which decks to study: #part1 in the URL wins, then last choice on this device */
+(function restorePick(){
+  const fromHash = (location.hash||"").replace(/^#/,"").split(",").filter(x=>DECK_BY[x]);
+  if(fromHash.length){ picked = new Set(fromHash); return; }
+  try{
+    const saved = JSON.parse(localStorage.getItem("srt-decks")||"[]").filter(x=>DECK_BY[x]);
+    if(saved.length) picked = new Set(saved);
+  }catch(e){}
+})();
+const pool = () => DECKS.filter(d=>picked.has(d.id)).flatMap(d=>d.bank);
+
+function renderPicker(){
+  const everything = picked.size===DECKS.length;
+  $("picker").innerHTML =
+    '<button class="ghost" data-pick="*" aria-pressed="'+everything+'">Everything</button>' +
+    DECKS.map(d=>'<button class="ghost" data-pick="'+d.id+'" aria-pressed="'+picked.has(d.id)+'">'+d.chip+'</button>').join("");
+  $("picker").querySelectorAll("[data-pick]").forEach(b=>{
+    b.onclick = () => {
+      const id = b.dataset.pick;
+      if(id==="*") picked = new Set(DECKS.map(d=>d.id));
+      else if(picked.has(id)){ if(picked.size>1) picked.delete(id); }   // never leave it empty
+      else picked.add(id);
+      try{ localStorage.setItem("srt-decks", JSON.stringify([...picked])); }catch(e){}
+      renderPicker(); renderModes();
+    };
+  });
+}
+function renderModes(){
+  const n = pool().length;
+  $("lenQuick").textContent = "Quick trip \u00b7 " + Math.min(10,n);
+  $("lenAll").textContent   = "Full tour \u00b7 " + n;
+}
+renderPicker(); renderModes();
 
 const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
 const show = id => ["start","play","done","study"].forEach(s=>$(s).classList.toggle("hidden", s!==id));
@@ -341,7 +517,7 @@ function startTrip(questions){
   idx=0; pts=0; streak=0; best=0; missed=[];
   show("play"); render();
 }
-$("playBtn").onclick = () => { isRetry=false; const all=shuffle(BANK); startTrip(tripLen? all.slice(0,tripLen): all); };
+$("playBtn").onclick = () => { isRetry=false; const all=shuffle(pool()); startTrip(tripLen? all.slice(0,Math.min(tripLen,all.length)): all); };
 $("againBtn").onclick = () => { isRetry=false; show("start"); };
 $("studyBtn").onclick = $("studyBtn2").onclick = () => { renderStudy(); show("study"); };
 $("backBtn").onclick = () => show("start");
@@ -457,9 +633,17 @@ function finish(){
     pct===100 ? (isRetry?"Cleaned them up!":"Perfect trip!") :
     pct>=80 ? "Nice driving!" :
     pct>=60 ? "Good start — keep going." : "Let's run it again.";
+  const used = [...new Set(deck.map(q=>q.deck))];
+  if(used.length>1){
+    $("byDeck").textContent = used.map(id=>{
+      const qs=deck.filter(q=>q.deck===id), miss=missed.filter(q=>q.deck===id).length;
+      return DECK_BY[id].chip+"  "+(qs.length-miss)+"/"+qs.length;
+    }).join("   \u00b7   ");
+    $("byDeck").classList.remove("hidden");
+  } else $("byDeck").classList.add("hidden");
   const box=$("missedBox"), list=$("missedList");
   if(missed.length){
-    list.innerHTML = missed.map(q=>"<li><b>"+q.q+"</b><br>"+q.why+"</li>").join("");
+    list.innerHTML = missed.map(q=>"<li>"+(used.length>1?'<span class="who">'+DECK_BY[q.deck].chip+"</span>":"")+"<b>"+q.q+"</b><br>"+q.why+"</li>").join("");
     box.classList.remove("hidden");
     $("retryBtn").classList.remove("hidden");
     $("retryBtn").textContent = "Retry the "+missed.length+" miss"+(missed.length>1?"es":"");
@@ -484,11 +668,15 @@ document.addEventListener("keydown", e=>{
 
 /* ----------------------------- study ------------------------------ */
 function renderStudy(){
-  $("studyBody").innerHTML = STUDY.map(sec=>
-    "<h3>"+sec.h+"</h3><dl>"+sec.items.map(it=>
-      "<dt>"+it[0]+"</dt><dd>"+it[1]+
-      (it[2]?'<div class="tags">'+it[2].map(t=>'<span class="tag">'+t+'</span>').join("")+'</div>':"")+
-      "</dd>").join("")+"</dl>"
+  const ds = DECKS.filter(d=>picked.has(d.id));
+  $("studyBody").innerHTML = ds.map(d=>
+    (ds.length>1 ? '<h2 class="deckhead">'+d.title+"</h2>" : "") +
+    d.study.map(sec=>
+      "<h3>"+sec.h+"</h3><dl>"+sec.items.map(it=>
+        "<dt>"+it[0]+"</dt><dd>"+it[1]+
+        (it[2]?'<div class="tags">'+it[2].map(t=>'<span class="tag">'+t+'</span>').join("")+'</div>':"")+
+        "</dd>").join("")+"</dl>"
+    ).join("")
   ).join("");
 }
 </script>

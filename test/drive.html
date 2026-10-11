@@ -2,74 +2,106 @@
 <!-- Black-box test driver for index.html.
      Run:  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
              --headless=new --disable-gpu --allow-file-access-from-files \
-             --virtual-time-budget=8000 --dump-dom "file://$PWD/test/drive.html"
+             --virtual-time-budget=20000 --dump-dom "file://$PWD/test/drive.html"
      Then read the <pre id="log"> block: any line starting with FAIL is a real failure.
-     It answers every question correctly except one deliberate miss, so a healthy run
-     ends at (n-1)/n with a 1-item retry pass. Must be run from a file:// URL --
+     Each pass answers every question correctly except one deliberate miss, so a healthy
+     run ends at (n-1)/n with a 1-item retry pass. Must be run from a file:// URL --
      a cross-origin https page blocks iframe access, so it cannot test the live site. -->
 <iframe id="f" src="../index.html" width="900" height="700"></iframe>
 <pre id="log"></pre>
 <script>
 const log=[]; const say=s=>{log.push(s);document.getElementById("log").textContent=log.join("\n");};
 window.onerror=e=>say("HARNESS ERROR: "+e);
+const answersOf=q => q.type==="tf" ? [q.a?"True":"False"]
+                   : q.type==="multi" ? q.a.map(i=>q.opts[i])
+                   : q.type==="mc" ? [q.opts[q.a]] : [q.accept[0]];
+
 async function run(){
   const f=document.getElementById("f"), d=f.contentDocument, w=f.contentWindow;
   w.onerror=e=>say("PAGE ERROR: "+e);
   const $=id=>d.getElementById(id);
+
+  // pull the decks straight out of the source, so the test knows nothing the page tells it
   const src=await (await fetch(f.src)).text();
-  const start=src.indexOf("const BANK = ["), end=src.indexOf("\n];", start);
-  const BANK=eval(src.slice(start+13, end+2));
-  say("bank size: "+BANK.length);
-  const byText={}; BANK.forEach(q=>{ (byText[q.q]=byText[q.q]||[]).push(q); });
-  say("duplicate prompts: "+Object.values(byText).filter(a=>a.length>1).length);
-  const answersOf=q => q.type==="tf" ? [q.a?"True":"False"]
-                     : q.type==="multi" ? q.a.map(i=>q.opts[i])
-                     : q.type==="mc" ? [q.opts[q.a]] : [q.accept[0]];
-  d.querySelector('[data-len="0"]').click();
-  $("playBtn").click();
-  let wrongDone=false, answered=0, seen=new Set();
-  while(!$("play").classList.contains("hidden")){
-    const text=$("qtext").textContent;
-    const q=(byText[text]||[])[0];
-    if(!q){ say("FAIL: on-screen question not in bank: "+text); break; }
-    seen.add(text);
-    const want=answersOf(q);
-    const makeWrong = !wrongDone && q.type==="mc";
-    if(q.type==="type"){
-      $("typed").value = makeWrong ? "zzz" : want[0].toUpperCase()+" ";
-    } else {
-      const btns=[...$("opts").querySelectorAll(".opt")];
-      if(btns.length !== (q.type==="tf"?2:q.opts.length)) say("FAIL: option count on "+text);
-      btns.forEach(b=>{
-        const label=b.lastElementChild.textContent;
-        const isRight=want.includes(label);
-        if(makeWrong ? !isRight : isRight) b.click();
-      });
+  const DECKS=eval(src.match(/const DECKS = (\[[\s\S]*?\n\]);/)[1]);
+  DECKS.forEach(dk=>dk.bank.forEach(q=>q.deck=dk.id));
+  const byText={}; DECKS.forEach(dk=>dk.bank.forEach(q=>{ (byText[q.q]=byText[q.q]||[]).push(q); }));
+  say("decks: "+DECKS.map(dk=>dk.id+"="+dk.bank.length).join(" ")+"  total="+Object.keys(byText).length);
+  const dupes=Object.values(byText).filter(a=>a.length>1);
+  say(dupes.length?"FAIL: duplicate prompts across decks: "+dupes.map(a=>a[0].q).join(" | "):"duplicate prompts: 0");
+
+  const pick=ids=>{   // click the picker into exactly this set
+    d.querySelector('[data-pick="*"]').click();
+    DECKS.filter(dk=>!ids.includes(dk.id)).forEach(dk=>d.querySelector('[data-pick="'+dk.id+'"]').click());
+  };
+
+  function playThrough(label, expectDecks){
+    let wrongDone=false, answered=0, seenDecks=new Set();
+    while(!$("play").classList.contains("hidden")){
+      const text=$("qtext").textContent, q=(byText[text]||[])[0];
+      if(!q){ say("FAIL ["+label+"]: question not in any deck: "+text); return; }
+      seenDecks.add(q.deck);
+      const want=answersOf(q), makeWrong = !wrongDone && q.type==="mc";
+      if(q.type==="type"){ $("typed").value = makeWrong ? "zzz" : want[0].toUpperCase()+" "; }
+      else {
+        const btns=[...$("opts").querySelectorAll(".opt")];
+        if(btns.length !== (q.type==="tf"?2:q.opts.length)) say("FAIL ["+label+"]: option count on "+text);
+        btns.forEach(b=>{ const isRight=want.includes(b.lastElementChild.textContent);
+                          if(makeWrong ? !isRight : isRight) b.click(); });
+      }
+      if(makeWrong) wrongDone=true;
+      $("submitBtn").click();
+      if($("fb").classList.contains("hidden")){ say("FAIL ["+label+"]: no feedback on "+text); return; }
+      const judged=$("fb").className.includes("no")?"WRONG":"RIGHT", expect=makeWrong?"WRONG":"RIGHT";
+      if(judged!==expect) say("FAIL ["+label+"] ["+q.type+"] graded "+judged+", expected "+expect+" :: "+text);
+      if(!$("fbWhy").textContent) say("FAIL ["+label+"]: no explanation on "+text);
+      answered++;
+      if(answered>80){ say("FAIL ["+label+"]: runaway"); return; }
+      $("nextBtn").click();
     }
-    if(makeWrong) wrongDone=true;
-    $("submitBtn").click();
-    if($("fb").classList.contains("hidden")){ say("FAIL: no feedback on "+text); break; }
-    const judged=$("fb").className.includes("no")?"WRONG":"RIGHT";
-    const expect=makeWrong?"WRONG":"RIGHT";
-    if(judged!==expect) say("FAIL ["+q.type+"] graded "+judged+", expected "+expect+" :: "+text);
-    if(!$("fbWhy").textContent) say("FAIL: no explanation on "+text);
-    answered++;
-    if(answered>60){ say("FAIL: runaway"); break; }
-    $("nextBtn").click();
+    const got=[...seenDecks].sort().join(",");
+    say(label+": answered "+answered+", decks seen ["+got+"], score "+$("finalScore").textContent
+        +", breakdown "+($("byDeck").classList.contains("hidden")?"hidden":'"'+$("byDeck").textContent+'"'));
+    if(got!==expectDecks.sort().join(",")) say("FAIL ["+label+"]: expected decks ["+expectDecks+"], saw ["+got+"]");
+    return answered;
   }
-  say("answered: "+answered+", distinct: "+seen.size);
-  say("results visible: "+!$("done").classList.contains("hidden"));
-  say("score: "+$("finalScore").textContent+" | "+$("doneLine").textContent);
-  say("retry btn: "+($("retryBtn").classList.contains("hidden")?"HIDDEN":$("retryBtn").textContent));
-  say("missed listed: "+$("missedList").children.length);
+
+  // 1. everything
+  pick(DECKS.map(dk=>dk.id));
+  say("labels: "+$("lenQuick").textContent+" | "+$("lenAll").textContent);
+  d.querySelector('[data-len="0"]').click(); $("playBtn").click();
+  const nAll=playThrough("all decks", DECKS.map(dk=>dk.id));
+  if(nAll!==DECKS.reduce((n,dk)=>n+dk.bank.length,0)) say("FAIL: full tour did not cover every question");
+  if($("byDeck").classList.contains("hidden")) say("FAIL: per-deck breakdown missing with 2 decks");
   $("retryBtn").click();
-  say("retry pass -> play visible: "+!$("play").classList.contains("hidden")+", pos "+$("pos").textContent);
-  $("quitBtn").click(); $("studyBtn").click();
-  say("study sections: "+$("studyBody").querySelectorAll("h3").length+", terms: "+$("studyBody").querySelectorAll("dt").length);
-  say("study def ok: "+/agriculture based economy to an industry based economy/.test($("studyBody").textContent));
-  $("backBtn").click(); d.querySelector('[data-len="10"]').click(); $("playBtn").click();
-  say("quick trip pos: "+$("pos").textContent);
+  say("retry pass: "+(!$("play").classList.contains("hidden")?"active, "+$("pos").textContent:"FAIL not active"));
+  $("quitBtn").click();
+
+  // 2. one deck only
+  pick(["part1"]);
+  say("part1 only labels: "+$("lenQuick").textContent+" | "+$("lenAll").textContent);
+  d.querySelector('[data-len="0"]').click(); $("playBtn").click();
+  playThrough("part1 only", ["part1"]);
+  if(!$("byDeck").classList.contains("hidden")) say("FAIL: breakdown should be hidden for a single deck");
+  $("againBtn").click();
+
+  // 3. study guide follows the picker
+  pick(["part2"]); $("studyBtn").click();
+  say("study (part2 only): heads="+$("studyBody").querySelectorAll(".deckhead").length
+      +" sections="+$("studyBody").querySelectorAll("h3").length);
+  if($("studyBody").querySelectorAll(".deckhead").length!==0) say("FAIL: single deck should not show a deck heading");
+  if(/boll weevil/i.test($("studyBody").textContent)) say("FAIL: part1 content leaked into a part2-only study guide");
+  $("backBtn").click();
+  pick(DECKS.map(dk=>dk.id)); $("studyBtn").click();
+  say("study (both): heads="+$("studyBody").querySelectorAll(".deckhead").length
+      +" sections="+$("studyBody").querySelectorAll("h3").length
+      +" terms="+$("studyBody").querySelectorAll("dt").length);
+  if($("studyBody").querySelectorAll(".deckhead").length!==DECKS.length) say("FAIL: expected one heading per deck");
+
+  // 4. quick trip respects the pool
+  $("backBtn").click(); pick(["part2"]); d.querySelector('[data-len="10"]').click(); $("playBtn").click();
+  say("quick trip (part2): "+$("pos").textContent);
   say("DONE");
 }
-document.getElementById("f").onload=()=>setTimeout(run,100);
+document.getElementById("f").onload=()=>setTimeout(run,120);
 </script>
